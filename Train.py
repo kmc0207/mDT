@@ -1,12 +1,12 @@
-#import torch
-#import torch
-#import pandas as pd
-#import numpy as np
-#import torch.nn as nn
-#import torch.nn.functional as F
-#import os
-#from transformers import BertTokenizer, BertForSequenceClassification
-#from torch.utils.data import Dataset, DataLoader
+import torch
+import torch
+import pandas as pd
+import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
+import os
+from transformers import BertTokenizer, BertForSequenceClassification
+from torch.utils.data import Dataset, DataLoader
 import logging
 import argparse
 
@@ -64,7 +64,7 @@ def train(args):
     for i in train_x:
         x=tokenizer(
                 i,
-                return_tensor='pt',
+                return_tensors='pt',
                 return_attention_mask=True,
                 padding='max_length',
                 truncation=True,
@@ -74,6 +74,7 @@ def train(args):
         attention_mask.append(x['attention_mask'])
     train_x_tokenized = torch.stack(train_x_tokenized)
     train_x_tokenized = train_x_tokenized.view(-1,MAXLEN)
+    mylogger.info('finish tokenize')
     attention_mask = torch.stack(attention_mask)
     train_y = torch.tensor(train_y)
     val_dataset = torch.utils.data.TensorDataset(
@@ -83,12 +84,14 @@ def train(args):
         train_x_tokenized[1000:],train_y[1000:],attention_mask[1000:]
     )
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=64,shuffle=False)
-    dataloader = torch.utils.data.DataLoader(dataset,batch_size=64,shuffle=False)
-    if is_student == True:
+    dataloader = torch.utils.data.DataLoader(train_dataset,batch_size=64,shuffle=False)
+    if args.is_student == True:
         print('student!')
     else:
-        model = BertForSequenceClassification.from_pretrained('bert-base-uncased',num_label =4).to('cuda')
+        mylogger.info('train a teacher')
+        model = BertForSequenceClassification.from_pretrained('bert-base-uncased',num_labels =4).to('cuda')
         optim = torch.optim.Adam(model.parameters(),lr=1e-5,eps=1e-8)
+        mylogger.info('start training')
         for epoch in range(args.n_epoch):
             losses = 0
             for x,y,mask in dataloader:
@@ -113,9 +116,9 @@ formatter = logging.Formatter('%(asctime)s-%(message)s')
 stream_hander = logging.StreamHandler()
 stream_hander.setFormatter(formatter)
 mylogger.addHandler(stream_hander)
-file_handler = logging.FileHandler(args.path+'/my.log')
+file_handler = logging.FileHandler(args.path+'/train.log')
 mylogger.addHandler(file_handler)
 mylogger.info('start!')
-f = open(args.path+"/c.txt",'r')
+train(args)
 
 
